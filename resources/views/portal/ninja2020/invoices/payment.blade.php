@@ -147,7 +147,7 @@
                     </div>
                 </div>
                 @endforeach
-
+                
                 @if(intval($total) == 0)
                     <small>* {{ ctrans('texts.online_payments_minimum_note') }}</small>
                 @endif

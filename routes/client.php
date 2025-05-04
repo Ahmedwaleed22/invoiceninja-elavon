@@ -83,6 +83,14 @@ Route::group(['middleware' => ['auth:contact', 'locale', 'domain_db','check_clie
 
     Route::get('payment_methods/confirm', [App\Http\Controllers\ClientPortal\PaymentMethodController::class, 'store'])->name('payment_methods.confirm');
 
+    Route::post('payment_methods/get_elavon_token', [App\Http\Controllers\ClientPortal\ElavonController::class, 'getTransactionToken'])->name('payment_methods.get_elavon_token');
+
+    // New route for Elavon "Pay Now" button
+    Route::get('invoices/{invoice_id}/pay_with_elavon', [App\Http\Controllers\ClientPortal\ElavonController::class, 'payNow'])->name('invoices.pay_with_elavon');
+
+    // New route for Elavon bulk payments
+    Route::post('invoices/pay_bulk_with_elavon', [App\Http\Controllers\ClientPortal\ElavonController::class, 'payBulkNow'])->name('invoices.pay_bulk_with_elavon');
+
     Route::resource('payment_methods', PaymentMethodController::class)->except(['edit', 'update']);
 
     Route::match(['GET', 'POST'], 'quotes/approve', [App\Http\Controllers\ClientPortal\QuoteController::class, 'bulk'])->name('quotes.bulk');

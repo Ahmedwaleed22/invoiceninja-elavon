@@ -39,6 +39,18 @@
                                 </a>
                             @endif
                         @endforeach
+                        
+                        @php
+                            $elavon_gateway = auth()->guard('contact')->user()->client->getElavonGateway();
+                        @endphp
+                        
+                        @if($elavon_gateway && $total > 0)
+                            <a href="{{ route('client.invoices.pay_with_elavon', auth()->guard('contact')->user()->client->invoices()->where('balance', '>', 0)->first()->hashed_id ?? '') }}" 
+                               class="block px-4 py-2 text-sm leading-5 text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:outline-none focus:bg-gray-100 focus:text-gray-900"
+                               dusk="payment-method-elavon">
+                                {{ ctrans('texts.pay_with_elavon') }}
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>

@@ -16,11 +16,30 @@
  * //Cache::forever($custom_company_translated_string, 'mogly');
  *
  * @param string $string
- * @param array $replace
+ * @param array|mixed $replace
  * @param null $locale
  * @return string
  */
 function ctrans(string $string, $replace = [], $locale = null): string
 {
-    return html_entity_decode(trans($string, $replace, $locale));
+    // Ensure $replace is always a properly formatted array
+    if (!is_array($replace)) {
+        $replace = [];
+    } else {
+        // Make sure all values in the array are safe for translation
+        foreach ($replace as $key => $value) {
+            if (is_int($value)) {
+                $replace[$key] = (string)$value;
+            } elseif (is_object($value) && !method_exists($value, '__toString')) {
+                $replace[$key] = '';
+            }
+        }
+    }
+    
+    try {
+        return html_entity_decode(trans($string, $replace, $locale));
+    } catch (\Exception $e) {
+        // Fallback if translation fails
+        return html_entity_decode(trans($string, [], $locale));
+    }
 }

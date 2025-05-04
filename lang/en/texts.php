@@ -5513,6 +5513,8 @@ $lang = array(
     'add_location' => 'Add Location',
     'updated_location' => 'Updated Location',
     'created_location' => 'Created Location',
+    'customer_information' => 'Customer Information',
+    'card_details' => 'Card Details',
 );
 
 return $lang;

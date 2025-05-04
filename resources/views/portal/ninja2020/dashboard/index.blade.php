@@ -71,6 +71,44 @@
         </div>
     </div>
 
+    <div class="mt-4 flex justify-center">
+        <!-- Regular payment button -->
+        <form action="{{ route('client.payments.process') }}" method="POST" class="mx-2">
+            @csrf
+            <input type="hidden" name="amount" value="{{ $client->balance }}">
+            <button type="submit" class="button button-primary bg-primary">
+                {{ ctrans('texts.pay_now') }}
+            </button>
+        </form>
+
+        <!-- Elavon payment button -->
+        @php
+            $elavon_gateway = \App\Models\CompanyGateway::where('company_id', $client->company_id)
+                ->whereHas('gateway', function ($query) {
+                    $query->where('provider', 'Elavon');
+                })->first();
+            
+            $invoices = $client->invoices;
+            if ($invoices->count() === 0) {
+                $invoices = $client->invoices()->get();
+            }
+        @endphp
+        
+        @if($elavon_gateway)
+        <form action="{{ route('client.invoices.pay_bulk_with_elavon') }}" method="POST" class="mx-2">
+            @csrf
+            @forelse($invoices as $invoice)
+                <input type="hidden" name="invoice_ids[]" value="{{ $invoice->hashed_id }}">
+            @empty
+                <input type="hidden" name="amount" value="{{ $client->balance }}">
+            @endforelse
+            <button type="submit" class="button button-primary bg-primary">
+                {{ ctrans('texts.pay_with_elavon') }}
+            </button>
+        </form>
+        @endif
+    </div>
+
     <div class="flex flex-wrap items-stretch rounded-md border border-[#E5E7EB] bg-white p-4 md:gap-y-6 xl:flex-nowrap mt-4">
         <div class="flex basis-1/2 items-center xl:basis-auto xl:border-r xl:border-[#E5E7EB] xl:pr-20">
             <p class="text-base font-semibold text-[#212529]">{{ ctrans('texts.invoice_from') }}</p>

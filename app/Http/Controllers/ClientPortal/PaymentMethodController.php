@@ -174,6 +174,16 @@ class PaymentMethodController extends Controller
         $client_contact = auth()->guard('contact')->user();
 
         if (request()->query('method') == GatewayType::CREDIT_CARD) {
+            // Get the Elavon gateway directly
+            $elavon_gateway = null;
+            
+            if (request()->has('provider') && request()->provider == 'elavon') {
+                $elavon_gateway = $client_contact->client->getElavonGateway();
+                if ($elavon_gateway) {
+                    return $elavon_gateway;
+                }
+            }
+            
             return $client_contact->client->getCreditCardGateway();
         }
         if (request()->query('method') == GatewayType::BACS) {

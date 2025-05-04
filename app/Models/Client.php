@@ -592,26 +592,21 @@ class Client extends BaseModel implements HasLocalePreference
      */
     public function getCreditCardGateway(): ?CompanyGateway
     {
-        $pms = $this->service()->getPaymentMethods(-1);
+        $company_gateways = $this->getSetting('company_gateway_ids');
 
-        foreach ($pms as $pm) {
-            if ($pm['gateway_type_id'] == GatewayType::CREDIT_CARD) {
+        if ($company_gateways) {
+            $gateways = $this->company
+                             ->company_gateways
+                             ->whereIn('id', $this->transformKeys(explode(',', $company_gateways)));
+        } else {
+            $gateways = $this->company
+                             ->company_gateways;
+        }
 
-                $cg = CompanyGateway::query()->find($pm['company_gateway_id']);
-
-                if ($cg->gateway_key == '80af24a6a691230bbec33e930ab40666') { //ensure we don't attempt to authorize paypal platform - yet.
-                    continue;
-                }
-
-                if ($cg && is_object($cg->fees_and_limits) && ! property_exists($cg->fees_and_limits, strval(GatewayType::CREDIT_CARD))) {
-                    $fees_and_limits = $cg->fees_and_limits;
-                    $fees_and_limits->{GatewayType::CREDIT_CARD} = new FeesAndLimits();
-                    $cg->fees_and_limits = $fees_and_limits;
-                    $cg->save();
-                }
-
-                if ($cg && is_object($cg->fees_and_limits) && $cg->fees_and_limits->{GatewayType::CREDIT_CARD}->is_enabled) {
-                    return $cg;
+        foreach ($gateways as $gateway) {
+            if ($this->validGatewayForAmount($gateway->getFeesAndLimits(GatewayType::CREDIT_CARD), $this->balance)) {
+                if ($gateway->gateway->provider_supports_cc) {
+                    return $gateway;
                 }
             }
         }
@@ -619,56 +614,38 @@ class Client extends BaseModel implements HasLocalePreference
         return null;
     }
 
-    public function getBACSGateway(): ?CompanyGateway
+    /**
+     * Returns the first Elavon Gateway.
+     *
+     * @return null|CompanyGateway The Priority Elavon gateway
+     */
+    public function getElavonGateway(): ?CompanyGateway
     {
-        $pms = $this->service()->getPaymentMethods(-1);
+        $company_gateways = $this->getSetting('company_gateway_ids');
 
-        foreach ($pms as $pm) {
-            if ($pm['gateway_type_id'] == GatewayType::BACS) {
-                $cg = CompanyGateway::query()->find($pm['company_gateway_id']);
+        if ($company_gateways) {
+            $gateways = $this->company
+                             ->company_gateways
+                             ->whereIn('id', $this->transformKeys(explode(',', $company_gateways)));
+        } else {
+            $gateways = $this->company
+                             ->company_gateways;
+        }
 
-                if ($cg && ! property_exists($cg->fees_and_limits, GatewayType::BACS)) { //@phpstan-ignore-line
-                    $fees_and_limits = $cg->fees_and_limits;
-                    $fees_and_limits->{GatewayType::BACS} = new FeesAndLimits();
-                    $cg->fees_and_limits = $fees_and_limits;
-                    $cg->save();
-                }
-
-                if ($cg && $cg->fees_and_limits->{GatewayType::BACS}->is_enabled) {
-                    return $cg;
-                }
+        foreach ($gateways as $gateway) {
+            if ($gateway->gateway && is_object($gateway->gateway) && isset($gateway->gateway->provider) && $gateway->gateway->provider === 'Elavon') {
+                return $gateway;
             }
         }
 
         return null;
     }
 
-    public function getACSSGateway(): ?CompanyGateway
-    {
-        $pms = $this->service()->getPaymentMethods(-1);
-
-        foreach ($pms as $pm) {
-            if ($pm['gateway_type_id'] == GatewayType::ACSS) {
-                $cg = CompanyGateway::query()->find($pm['company_gateway_id']);
-
-                if ($cg && ! property_exists($cg->fees_and_limits, GatewayType::ACSS)) { //@phpstan-ignore-line
-                    $fees_and_limits = $cg->fees_and_limits;
-                    $fees_and_limits->{GatewayType::ACSS} = new FeesAndLimits();
-                    $cg->fees_and_limits = $fees_and_limits;
-                    $cg->save();
-                }
-
-                if ($cg && $cg->fees_and_limits->{GatewayType::ACSS}->is_enabled) {
-                    return $cg;
-                }
-            }
-        }
-
-        return null;
-    }
-
-
-    //todo refactor this  - it is only searching for existing tokens
+    /**
+     * Returns the first Bank Transfer Gateway.
+     *
+     * @return null|CompanyGateway The Priority Bank Transfer gateway
+     */
     public function getBankTransferGateway(): ?CompanyGateway
     {
         $pms = $this->service()->getPaymentMethods(-1);
@@ -865,17 +842,17 @@ class Client extends BaseModel implements HasLocalePreference
 
     public function validGatewayForAmount($fees_and_limits_for_payment_type, $amount): bool
     {
-        if (isset($fees_and_limits_for_payment_type)) {
+        if (isset($fees_and_limits_for_payment_type) && is_object($fees_and_limits_for_payment_type)) {
             $fees_and_limits = $fees_and_limits_for_payment_type;
         } else {
             return true;
         }
 
-        if ((property_exists($fees_and_limits, 'min_limit')) && $fees_and_limits->min_limit !== null && $fees_and_limits->min_limit != -1 && $amount < $fees_and_limits->min_limit) {
+        if (is_object($fees_and_limits) && property_exists($fees_and_limits, 'min_limit') && $fees_and_limits->min_limit !== null && $fees_and_limits->min_limit != -1 && $amount < $fees_and_limits->min_limit) {
             return false;
         }
 
-        if ((property_exists($fees_and_limits, 'max_limit')) && $fees_and_limits->max_limit !== null && $fees_and_limits->max_limit != -1 && $amount > $fees_and_limits->max_limit) {
+        if (is_object($fees_and_limits) && property_exists($fees_and_limits, 'max_limit') && $fees_and_limits->max_limit !== null && $fees_and_limits->max_limit != -1 && $amount > $fees_and_limits->max_limit) {
             return false;
         }
 

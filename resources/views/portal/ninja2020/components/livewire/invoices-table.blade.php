@@ -102,7 +102,7 @@
                                 {!! App\Models\Invoice::badgeForStatus($invoice->status) !!}
                             </td>
                             <td class="flex items-center justify-end px-6 py-4 text-sm font-medium leading-5 whitespace-nowrap">
-                                @if($invoice->isPayable() && $invoice->balance > 0 && $gateway_available)
+                                @if($invoice->isPayable())
                                     <form action="{{ route('client.invoices.bulk') }}" method="post">
                                         @csrf
                                         <input type="hidden" name="invoices[]" value="{{ $invoice->hashed_id }}">
@@ -111,6 +111,13 @@
                                             {{ ctrans('texts.pay_now') }}
                                         </button>
                                     </form>
+                                    
+                                    @php
+                                        $elavon_gateway = \App\Models\CompanyGateway::where('company_id', $invoice->company_id)
+                                            ->whereHas('gateway', function ($query) {
+                                                $query->where('provider', 'Elavon');
+                                            })->first();
+                                    @endphp
                                 @endif
                                 <a href="{{ route('client.invoice.show', $invoice->hashed_id) }}" class="button-link text-primary">
                                     {{ ctrans('texts.view') }}
